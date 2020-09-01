@@ -5,6 +5,7 @@ pub struct Framebuffer {
     framebuffer: [u64; 32]
 }
 
+const FIRST_BIT :u64 = 1<<63;
 
 impl Framebuffer {
     pub fn new() -> Self {
@@ -13,16 +14,16 @@ impl Framebuffer {
         }
     }
 
-    pub fn rows(&self) -> &[Row] {
-        let mut rows : [Row; 32];
+    pub fn rows(&self) -> [Row; 32] {
+        let mut rows = [0.into(); 32];
         for (i, &row) in self.framebuffer.iter().enumerate() {
             rows[i] = row.into();
         }
-        &rows[..]
+        rows
     }
 
     pub fn get(&self, x: u8, y: u8) -> bool {
-        self.framebuffer[y as usize] & (1<<x) != 0 
+        self.framebuffer[y as usize] & (FIRST_BIT>>x) != 0 
     }
 
     pub fn draw(&mut self, coords: (u8,u8) , sprite: &[u8]) -> bool {
@@ -31,7 +32,7 @@ impl Framebuffer {
 
         for (dy,&byte) in sprite.iter().enumerate() {
             let y = (y as usize + dy) % 32;
-            let byte = (byte as u64).rotate_left(x as u32);
+            let byte = ((byte as u64).swap_bytes()).rotate_right(x as u32);
             self.framebuffer[y] ^= byte; 
             if self.framebuffer[y] & byte != byte {
                 collision = true;
@@ -40,11 +41,17 @@ impl Framebuffer {
         
         collision
     }
+
+    pub fn clear(&mut self) {
+        for row in self.framebuffer.iter_mut() {
+            *row = 0;
+        }
+    }
      
 }
 
 #[derive(Copy,Clone,Debug)]
-struct Row {
+pub struct Row {
     row: u64, 
     index: u8,
 }
@@ -72,7 +79,7 @@ impl Iterator for Row {
     
         self.index += 1;
         
-        match self.row & (1<<bit_index) {
+        match self.row & (FIRST_BIT>>bit_index) {
             0 => Some(false),
             _ => Some(true),
         }    
@@ -91,6 +98,15 @@ impl Keypad {
         Self {
             keys: [false; 16],
         }
+    }
+
+    pub fn first_pressed_key(&self) -> Option<u8> {
+        for (i, &key) in self.keys.iter().enumerate() {
+            if key {
+                return Some(i as u8);
+            }
+        }
+        None
     }
 }
 
