@@ -15,7 +15,7 @@ use winit::{
     },
 };
 use serde::{Serialize,Deserialize};
-use chip9::Chip8;
+use chio::Chip8;
 
 struct Emulator {
     chip8: Chip8,
